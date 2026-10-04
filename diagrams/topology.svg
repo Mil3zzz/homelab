@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" font-family="Segoe UI, Helvetica, Arial, sans-serif" xmlns:c2pa="http://c2pa.org/manifest">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+    </marker>
+    <style>
+      .box{fill:#fff;stroke:#334155;stroke-width:1.5;rx:8}
+      .t{font-size:14px;font-weight:600;fill:#0f172a}
+      .s{font-size:11.5px;fill:#475569}
+      .h{font-size:13px;font-weight:700;fill:#0f172a;letter-spacing:.3px}
+      .line{stroke:#475569;stroke-width:2;fill:none}
+      .trunk{stroke:#0f172a;stroke-width:4;fill:none}
+      .sso{stroke:#7c3aed;stroke-width:1.6;fill:none;stroke-dasharray:5 4}
+    </style>
+  </defs>
+
+  <rect width="1200" height="900" fill="#f8fafc"/>
+  <text x="30" y="40" font-size="22" font-weight="700" fill="#0f172a">Home Lab Topology</text>
+  <text x="30" y="62" class="s">Addresses and hostnames genericized. Updated Oct 2026.</text>
+
+  <!-- Edge -->
+  <rect x="520" y="30" width="160" height="44" class="box"/>
+  <text x="600" y="57" text-anchor="middle" class="t">Internet</text>
+
+  <rect x="505" y="100" width="190" height="52" class="box"/>
+  <text x="600" y="122" text-anchor="middle" class="t">ISP gateway</text>
+  <text x="600" y="140" text-anchor="middle" class="s">router mode (double NAT upstream)</text>
+
+  <rect x="455" y="180" width="290" height="74" class="box" style="fill:#fff7ed;stroke:#c2410c"/>
+  <text x="600" y="202" text-anchor="middle" class="t">OPNsense firewall / router</text>
+  <text x="600" y="220" text-anchor="middle" class="s">inter-VLAN routing · stateful rules · DHCP (dnsmasq)</text>
+  <text x="600" y="237" text-anchor="middle" class="s">mDNS repeater · Tailscale subnet router + exit node</text>
+
+  <path d="M600 74 V100" class="line"/>
+  <path d="M600 152 V180" class="line"/>
+
+  <!-- Remote / cloud side -->
+  <rect x="860" y="100" width="300" height="58" class="box" style="fill:#eff6ff;stroke:#1d4ed8"/>
+  <text x="1010" y="123" text-anchor="middle" class="t">Remote devices (Tailscale)</text>
+  <text x="1010" y="141" text-anchor="middle" class="s">reach internal subnets, exit through home DNS</text>
+  <path d="M860 135 C 800 150, 780 190, 745 205" class="line" stroke-dasharray="6 4" marker-end="url(#arr)"/>
+
+  <rect x="40" y="100" width="300" height="58" class="box" style="fill:#eff6ff;stroke:#1d4ed8"/>
+  <text x="190" y="123" text-anchor="middle" class="t">Cloudflare Tunnel + WAF</text>
+  <text x="190" y="141" text-anchor="middle" class="s">outbound only, geo-blocked, no open ports</text>
+
+  <path d="M340 135 C 400 150, 420 190, 455 205" class="line" stroke-dasharray="6 4" marker-start="url(#arr)"/>
+  <text x="330" y="178" class="s">tunnel from edge host</text>
+
+  <!-- Switch + AP -->
+  <rect x="470" y="290" width="260" height="52" class="box"/>
+  <text x="600" y="312" text-anchor="middle" class="t">Core managed switch (802.1Q)</text>
+  <text x="600" y="330" text-anchor="middle" class="s">untagged access ports · PVID per port</text>
+  <path d="M600 254 V290" class="trunk"/>
+  <text x="610" y="276" class="s">tagged trunk (all VLANs)</text>
+
+  <rect x="800" y="290" width="220" height="52" class="box"/>
+  <text x="910" y="312" text-anchor="middle" class="t">Wireless AP</text>
+  <text x="910" y="330" text-anchor="middle" class="s">per-SSID VLAN mapping</text>
+  <path d="M730 316 H800" class="trunk"/>
+
+  <!-- Second switch -->
+  <rect x="190" y="290" width="220" height="52" class="box"/>
+  <text x="300" y="312" text-anchor="middle" class="t">Access switch (802.1Q)</text>
+  <text x="300" y="330" text-anchor="middle" class="s">edge Pi + secondary node, VLAN 10</text>
+  <path d="M410 316 H470" class="trunk"/>
+  <text x="440" y="308" text-anchor="middle" class="s">trunk</text>
+
+  <!-- VLAN bus -->
+  <path d="M600 342 V372" class="line"/>
+  <path d="M130 372 H1080" class="line"/>
+  <path d="M130 372 V395 M555 372 V395 M820 372 V395 M1000 372 V395" class="line"/>
+
+  <!-- VLAN 10 Servers -->
+  <rect x="25" y="395" width="545" height="440" rx="12" fill="#ecfdf5" stroke="#047857" stroke-width="1.5"/>
+  <text x="45" y="420" class="h" fill="#047857">VLAN 10 — Servers</text>
+
+  <!-- Proxmox host -->
+  <rect x="40" y="432" width="300" height="300" rx="10" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+  <text x="190" y="454" text-anchor="middle" class="t">Proxmox VE (bare metal)</text>
+
+  <rect x="55" y="466" width="270" height="44" class="box"/>
+  <text x="67" y="485" class="t" style="font-size:13px">Domain controller</text>
+  <text x="67" y="501" class="s">AD DS + AD-integrated DNS · root hints off</text>
+
+  <rect x="55" y="518" width="270" height="44" class="box"/>
+  <text x="67" y="537" class="t" style="font-size:13px">Docker node</text>
+  <text x="67" y="553" class="s">Immich · Portainer</text>
+
+  <rect x="55" y="570" width="130" height="44" class="box"/>
+  <text x="67" y="589" class="t" style="font-size:13px">Nextcloud</text>
+  <text x="67" y="605" class="s">LXC (Alpine)</text>
+
+  <rect x="195" y="570" width="130" height="44" class="box" style="fill:#f5f3ff;stroke:#7c3aed"/>
+  <text x="207" y="589" class="t" style="font-size:13px">Authentik</text>
+  <text x="207" y="605" class="s">SSO + TOTP MFA</text>
+
+  <rect x="55" y="622" width="270" height="44" class="box"/>
+  <text x="67" y="641" class="t" style="font-size:13px">Linux practice VM</text>
+  <text x="67" y="657" class="s">Rocky Linux · RHCSA prep, isolated</text>
+
+  <rect x="55" y="674" width="270" height="44" class="box" style="fill:#fff7ed;stroke:#c2410c"/>
+  <text x="67" y="693" class="t" style="font-size:13px">Monitoring (LXC)</text>
+  <text x="67" y="709" class="s">Prometheus · Grafana · Uptime Kuma</text>
+
+  <!-- Secondary + Pi -->
+  <rect x="355" y="432" width="200" height="120" rx="10" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+  <text x="455" y="454" text-anchor="middle" class="t">Secondary (mini PC)</text>
+  <text x="367" y="475" class="s">Pi-hole + Unbound (resolver B)</text>
+  <text x="367" y="492" class="s">Wazuh manager + dashboard</text>
+  <text x="367" y="509" class="s">nightly NAS pull (read-only)</text>
+  <text x="367" y="526" class="s">rsync → 1TB USB drive</text>
+  <text x="367" y="543" class="s">smartd · Node Exporter</text>
+
+  <rect x="355" y="562" width="200" height="120" rx="10" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+  <text x="455" y="584" text-anchor="middle" class="t">Edge host (Raspberry Pi)</text>
+  <text x="367" y="605" class="s">Pi-hole + Unbound (resolver A)</text>
+  <text x="367" y="622" class="s">Cloudflare Tunnel</text>
+  <text x="367" y="639" class="s">Nginx Proxy Manager</text>
+  <text x="367" y="656" class="s">CrowdSec</text>
+  <text x="367" y="673" class="s">Node Exporter + cAdvisor</text>
+
+  <rect x="355" y="692" width="200" height="56" rx="10" fill="#fff" stroke="#047857" stroke-width="1.5"/>
+  <text x="455" y="714" text-anchor="middle" class="t">2-bay NAS · RAID 1 · Btrfs</text>
+  <text x="455" y="732" text-anchor="middle" class="s">SMB3 · snapshots · host firewall</text>
+  <text x="45" y="760" class="h" style="fill:#7c3aed;font-size:12px">Internal services sit behind Authentik SSO + MFA</text>
+  <text x="45" y="778" class="s">as new ones get added, they join the same login instead of a new password</text>
+  <text x="45" y="806" class="h" style="font-size:12px">Wazuh agents:</text>
+  <text x="45" y="824" class="s">4 endpoints across Windows and Linux, domain controller included</text>
+
+  <!-- VLAN 20 -->
+  <rect x="585" y="395" width="200" height="200" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+  <text x="600" y="420" class="h" fill="#1d4ed8">VLAN 20 — Clients</text>
+  <rect x="600" y="435" width="170" height="68" class="box"/>
+  <text x="612" y="456" class="t" style="font-size:13px">Linux laptop</text>
+  <text x="612" y="473" class="s">domain-joined (SSSD)</text>
+  <text x="612" y="490" class="s">LUKS full-disk encryption</text>
+  <rect x="600" y="512" width="170" height="68" class="box"/>
+  <text x="612" y="533" class="t" style="font-size:13px">Windows desktop</text>
+  <text x="612" y="550" class="s">non-domain</text>
+  <text x="612" y="567" class="s">maps the NAS share</text>
+
+  <!-- VLAN 30 -->
+  <rect x="800" y="395" width="170" height="200" rx="12" fill="#fefce8" stroke="#a16207" stroke-width="1.5"/>
+  <text x="815" y="420" class="h" fill="#a16207">VLAN 30</text>
+  <text x="815" y="438" class="h" fill="#a16207">Restricted</text>
+  <text x="815" y="465" class="s">grouped with Servers</text>
+  <text x="815" y="482" class="s">in a firewall alias</text>
+  <text x="815" y="499" class="s">deny target for IoT</text>
+
+  <!-- VLAN 40 -->
+  <rect x="985" y="395" width="190" height="200" rx="12" fill="#fef2f2" stroke="#b91c1c" stroke-width="1.5"/>
+  <text x="1000" y="420" class="h" fill="#b91c1c">VLAN 40 — IoT</text>
+  <rect x="1000" y="435" width="160" height="50" class="box"/>
+  <text x="1012" y="456" class="t" style="font-size:13px">Printer</text>
+  <text x="1012" y="473" class="s">headless, no patches</text>
+  <rect x="1000" y="493" width="160" height="40" class="box"/>
+  <text x="1012" y="518" class="t" style="font-size:13px">TV / untrusted</text>
+  <text x="1000" y="555" class="s">one-way: trusted → IoT ok</text>
+  <text x="1000" y="572" class="s">IoT → anything: blocked</text>
+
+  <!-- DNS path note -->
+  <rect x="585" y="615" width="590" height="130" rx="12" fill="#fff" stroke="#334155" stroke-width="1.2"/>
+  <text x="605" y="640" class="h">DNS path</text>
+  <text x="605" y="662" class="s">Clients → domain controller only (authoritative for the internal zone)</text>
+  <text x="605" y="681" class="s">DC forwards → resolver A and resolver B (separate physical hosts)</text>
+  <text x="605" y="700" class="s">Pi-hole filters → local Unbound → root, TLD, authoritative (DNSSEC on)</text>
+  <text x="605" y="719" class="s">Root hints off on the DC, so a forwarder outage is loud instead of silently unfiltered</text>
+
+  <!-- Power -->
+  <rect x="585" y="760" width="590" height="75" rx="12" fill="#fff" stroke="#334155" stroke-width="1.2"/>
+  <text x="605" y="785" class="h">Power</text>
+  <text x="605" y="806" class="s">UPS battery outlets: firewall, both switches, Proxmox host, secondary node, NAS</text>
+  <text x="605" y="824" class="s">NUT signals a clean shutdown when the battery runs low</text>
+
+</svg>
