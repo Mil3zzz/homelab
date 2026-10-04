@@ -1,0 +1,19 @@
+---
+- name: Update all packages
+  hosts: servers
+  become: true
+  tasks:
+    - name: Refresh package lists and install updates
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: safe
+
+    - name: Check whether a reboot is needed
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_flag
+
+    - name: Say so if a reboot is needed
+      ansible.builtin.debug:
+        msg: "Reboot needed on this machine"
+      when: reboot_flag.stat.exists
