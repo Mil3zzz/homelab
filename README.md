@@ -112,7 +112,7 @@ The honest gap: SSO is configured but not yet enforced. The backends still answe
 ## Monitoring and security
 
 - **Wazuh SIEM** — manager on the secondary node, agents on four endpoints across Windows and Linux, domain controller included. Vulnerability detection, file integrity monitoring, CIS benchmark scoring. Logs get pruned at 7 days through a scheduled job plus an index lifecycle policy, sized against actual disk space before I started ingesting anything, not after.
-- **Prometheus + Grafana** in their own container on the hypervisor. Node Exporter runs on the hypervisor, the edge Pi, and the secondary node, and cAdvisor on the Pi gives per-container numbers. CPU, memory, disk, and temperatures all go on one dashboard with history, so I can see a trend instead of a single snapshot. This replaced Netdata, which turned out to be the cause of a problem it was supposed to be watching for (see the write-ups).
+- **Prometheus + Grafana** in their own container on the hypervisor. Node Exporter runs on the hypervisor, the edge Pi, the monitoring container and the secondary node, and cAdvisor on the Pi gives per-container numbers. CPU, memory, disk, and temperatures all go on one dashboard with history, so I can see a trend instead of a single snapshot. This replaced Netdata, which turned out to be the cause of a problem it was supposed to be watching for (see the write-ups).
 - **CrowdSec** watching the reverse proxy on the edge host.
 - **Cloudflare Tunnel + WAF** for anything exposed externally, geo-blocked, no inbound ports open on the firewall at all.
 - **Full-disk encryption** on the laptop. Deleting a domain account stops someone from logging in — it does nothing about the data already sitting on a stolen disk. Encryption is the actual fix for that.
@@ -132,12 +132,27 @@ When the DC got its agent it came back with hundreds of critical and high findin
 
 ---
 
+## Automated patching
+
+Updates used to mean SSHing into each box one at a time, which is how a machine ends up three weeks behind. Now **Ansible runs through Semaphore**, a web UI with a key store, an inventory, a Git-backed playbook repository (this one), and a scheduler.
+
+- One playbook runs `apt` with a safe upgrade, so packages I deliberately hold back (the SIEM agent, for example) stay held, then reports whether a reboot is needed.
+- The secondary resolver and the edge Pi each have a task template and a **weekly schedule** that runs Sunday at 3 AM local time, when nothing depends on them. Cron schedules in Semaphore use UTC, so that's a different hour in the schedule than on my clock.
+- Login and sudo credentials live in Semaphore's key store, never in the repository. SSH login and privilege escalation are separate credentials, and mixing them up was the most common failure while I built this (see below).
+- I can also run any template by hand with one click when a security update can't wait for Sunday.
+
+The Windows domain controller isn't in this yet. It gets patched through Group Policy with restarts limited to the night, because it also serves DNS for the whole network.
+
+---
+
 ## Services
 
 - **Nextcloud** for files, behind Authentik.
-- **Immich** for photo backup, so my phone isn't the only copy and I can eventually stop paying for iCloud. Runs in Docker Compose on its own node.
+- **Immich** for photo backup, so my phone isn't the only copy and I can eventually stop paying for iCloud. Runs in Docker Compose on its own node, with the photo library stored on the NAS (see Storage and backup).
 - **Authentik's app launcher** as the lab dashboard, so the page that links every service is also the one that logs you in. It replaced Homepage. The firewall is deliberately left off it: if Authentik is ever down, I still need a way into the network to fix it.
-- **Uptime Kuma** for up/down checks with Discord alerts.
+- **Uptime Kuma** on the edge Pi, checking 11 targets: the firewall, domain controller, secondary resolver, hypervisor, NAS, and the web interfaces for Authentik, Grafana, Immich and Pi-hole, plus two outside addresses to tell "my network is down" apart from "the internet is down". Ping for machines, HTTP(s) checks for services, so a box that answers but has a dead service still shows red. Everything alerts a Discord channel.
+- **Semaphore (Ansible UI)** for patching, covered in the next section.
+- **Wake-on-LAN** through the firewall, so the desktop can be powered on from my phone. Remote desktop access once it's awake is still on the to-do list.
 
 ---
 
@@ -146,6 +161,13 @@ When the DC got its agent it came back with hundreds of critical and high findin
 File storage lives on a 2-bay NAS on the server VLAN, running RAID 1 on NAS-rated drives with a Btrfs volume. It replaced a Samba share on the secondary node, which itself replaced a share on the domain controller once a capacity check showed about 17 GB free on its system drive. A domain controller filling its own disk can take authentication down for everyone.
 
 I returned the first NAS I bought after finding out it no longer gets security updates. An unpatched box holding every file on the network is a bigger risk than having no NAS at all.
+
+### Photos on the NAS
+
+Immich's library lives on its own NAS share instead of the Docker node's local disk, so photos get the same RAID and snapshot protection as everything else. The Docker host mounts the share over SMB with a dedicated account that only has access to that one folder. Two details mattered:
+
+- **Boot order.** If Docker starts before the NAS share is mounted, Immich happily starts with an empty library and begins writing to the local disk. A systemd dependency makes Docker wait for the mount, and the mount is marked as network-dependent so a slow NAS doesn't hang boot.
+- **Verify, don't assume.** After switching the storage path I confirmed with `docker inspect` that the container's upload directory really pointed at the NAS mount, and then opened photos in the web UI to confirm they were being served from it.
 
 ### Hardening
 
@@ -162,7 +184,7 @@ RAID isn't a backup: it mirrors deletions and ransomware to both drives instantl
 | Threat | Covered by |
 |---|---|
 | One drive dies | RAID 1 mirror |
-| File deleted, or ransomware encrypts the share | Daily Btrfs snapshots, kept 30 days, read-only |
+| File deleted, or ransomware encrypts the share | Daily Btrfs snapshots, kept 30 days, read-only (the photo share included) |
 | The whole NAS dies or is stolen | Nightly off-box copy to a separate drive on the secondary node |
 | Fire or flood | Nothing yet (see roadmap) |
 
@@ -188,6 +210,9 @@ Not worth a full write-up each, but they all taught me something.
 - **Nextcloud login did nothing.** Click login, nothing happens, no error. The browser side looked fine. The Nextcloud log said PHP couldn't write session data because its temp directory didn't exist. Created it with the right owner, restarted PHP-FPM, fixed. Lesson: when the UI gives you nothing, the application log usually has the answer.
 - **Monitoring said the domain controller's disk was 86% full.** Its main drive had 18 GB free. The alert was about an 865 MB volume that a Windows update had given a drive letter: the recovery partition, which is meant to be nearly full. I removed the drive letter so Windows hides it again. The lesson was to check which volume an alert is actually measuring before cleaning anything up.
 - **Backup service account rejected with the right password.** The kernel log showed `STATUS_LOGON_FAILURE`, which rules out permissions and networking. Resetting it to a long letters-and-digits password fixed it. Special characters are a common way a password that works in a browser breaks in a Linux credentials file. The other lesson was to stop retrying, because the NAS's auto-block counts every attempt.
+- **Ansible could log in but couldn't patch anything.** `apt` failed with a lock permission error even though the playbook ran with privilege escalation turned on. Escalation was on, but it was using my own SSH account as the "become" user instead of root, so it escalated to nothing. Semaphore wants a separate credential for escalation. I'd lost time chasing the sudo implementation itself, which was a detour.
+- **Uptime Kuma said "name or service not known" for a host that was fine.** Kuma runs inside a container whose resolver doesn't know my internal domain, so internal names fail there even though they work from my desk. Monitoring by IP fixed it, and it's a reminder that a container has its own view of the network.
+- **Uptime Kuma HTTP check failed with an SSL "wrong version number" error.** A plain-HTTP service was being probed with HTTPS. That error message means one side is speaking TLS and the other isn't. A refused connection on another check meant the opposite problem: the host was reachable but nothing was listening on that port.
 - **Immich wouldn't start, then kept dying.** First it couldn't log in to its own database — the DB variables were only defined on the database container, never passed to the app container. Then the kernel's OOM killer kept killing it because the container only had 2 GB. More memory and lower job concurrency fixed both.
 
 ## [Mistakes and lessons](docs/mistakes.md)
@@ -200,7 +225,8 @@ The stuff I got wrong, including the dumb ones. Leaving these out would make the
 
 - A quarantine VLAN for isolating anything suspect
 - Per-VM and per-container stats from Proxmox on the Grafana dashboard
-- Central patching with Ansible, instead of SSHing into each box one at a time
+- Extend Ansible patching beyond the Pi and the secondary resolver to the Proxmox host and the containers, and patch the domain controller through Group Policy
+- A second Uptime Kuma instance on different hardware, since the current one lives on the Pi it can't alert about
 - Suricata IDS on the firewall feeding Wazuh, then an isolated attack-practice range to test what it catches
 - A second physical firewall with CARP failover, so the network stays up while the main one reboots
 - Something for the domain controller that fits where Authentik doesn't
@@ -208,8 +234,8 @@ The stuff I got wrong, including the dumb ones. Leaving these out would make the
 - Enforce SSO so the backends can't be reached by raw IP
 - Join the NAS to Active Directory (the join stalls at the domain-server check; I suspect Windows Server 2025's stricter LDAP defaults)
 - An internal certificate authority to replace self-signed certificates
-- Move Immich's photo library onto the NAS
-- Offsite backup, to cover the one threat the current layers don't
+- Add the photo share to the nightly off-box copy, and then offsite backup to cover the one threat the current layers don't
+- Single sign-on for Immich through Authentik. I got as far as an OAuth provider and the Immich settings, but the Immich container fails its discovery request to Authentik even though the Docker host can reach it fine. I haven't found the cause yet, so it's parked until the internal certificate authority is in place, which removes one variable
 - GNS3 topologies for routing/switching practice
 - Building out the Rocky Linux practice VM for RHCSA prep. It's isolated on purpose, so I can break things there without taking down anything the lab depends on
 
