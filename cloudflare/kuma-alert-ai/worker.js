@@ -13,6 +13,10 @@ export default {
       return new Response("Bad request", { status: 400 });
     }
 
+    if (url.pathname === "/wazuh") {
+      return wazuhDigest(data, env);
+    }
+
     const monitor = data.monitor || {};
     const beat = data.heartbeat || {};
     const name = monitor.name || "Test notification";
@@ -79,3 +83,48 @@ export default {
     return new Response("ok");
   },
 };
+
+async function wazuhDigest(data, env) {
+  const total = data.total || 0;
+  const highest = data.highest_level || 0;
+  let advice = "";
+  try {
+    const ai = await env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
+      messages: [
+        {
+          role: "system",
+          content:
+            "You summarise a home lab's Wazuh SIEM alerts from the last 24 hours for a " +
+            "student learning network security. Start with one line: Verdict: Quiet, " +
+            "Worth a look, or Act now. Then up to 5 short bullets on the notable items: " +
+            "what each means in plain English and whether to act. Then one line starting " +
+            "'Safe to ignore:' for routine noise. Wazuh levels: 0-6 routine, 7-11 worth " +
+            "attention, 12+ serious. Under 180 words. Use only the data given; never invent " +
+            "hosts, users or events.",
+        },
+        { role: "user", content: JSON.stringify(data) },
+      ],
+      max_tokens: 450,
+    });
+    advice = (ai && ai.response) || "";
+  } catch (e) {
+    console.log("AI error:", e && e.message);
+    const top = (data.top || [])
+      .slice(0, 5)
+      .map((r) => "- L" + r.level + " x" + r.count + ": " + r.description)
+      .join("\n");
+    advice =
+      "(AI summary unavailable: " + String((e && e.message) || e).slice(0, 200) + ")\n" + top;
+  }
+
+  const text =
+    "🛡️ **Wazuh daily digest** (" + total + " alerts in " + (data.hours || 24) +
+    "h, highest level " + highest + ")\n\n" + advice;
+
+  await fetch(env.DISCORD_WEBHOOK, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: text.slice(0, 1900) }),
+  });
+  return new Response("ok");
+}
