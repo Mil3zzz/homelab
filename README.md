@@ -1,5 +1,7 @@
 # Home Lab
 
+**Last updated: October 10, 2026** · [Changelog: what changed and when](CHANGELOG.md)
+
 A segmented, monitored home network I built to actually learn networking and sysadmin work, not just read about it. Active Directory with AD-integrated DNS, four VLANs behind an OPNsense firewall, two independent DNS resolvers on separate hardware, single sign-on with MFA in front of the admin panels, a Wazuh SIEM watching four endpoints, a Suricata intrusion detection system on the firewall, a local AI server on my desktop's GPU, Prometheus and Grafana charting the hardware, a hardened NAS with layered backups, and remote access that doesn't need any inbound ports opened.
 
 > Addresses, hostnames, and the domain name below are genericized. Everything about the design and the reasoning is real.
@@ -239,11 +241,20 @@ The stuff I got wrong, including the dumb ones. Leaving these out would make the
 
 ## Roadmap
 
+### Working on now (October 2026)
+
+- **Remote login to the desktop after Wake-on-LAN.** Waking it is solved; the next step is getting past the Windows lock screen remotely. The plan is OpenSSH Server first (it works without anyone logged in, and it goes into the same SSH gateway as everything else), then a self-hosted remote desktop tool for the GUI. The point is to run the desktop as an always-on server, since it also hosts the local AI model.
+- **A real job for the Raspberry Pi.** First, a backup Tailscale subnet router so remote access doesn't depend only on the firewall. Then either a RADIUS server for WPA-Enterprise Wi-Fi on a test SSID (per-user logins instead of one shared password) or a floating DNS address shared with the secondary resolver using VRRP (Keepalived).
+- **Finishing the Suricata pipeline**: a custom rule that fires on a harmless test DNS name, then forwarding alerts to Wazuh.
+
+### Later
+
+- A site-to-site VPN to a simulated branch office (a VyOS router on an isolated Proxmox network), which avoids my ISP's double NAT entirely
 - A quarantine VLAN for isolating anything suspect
 - Per-VM and per-container stats from Proxmox on the Grafana dashboard
 - Extend Ansible patching beyond the Pi and the secondary resolver to the Proxmox host and the containers, and patch the domain controller through Group Policy
 - A second Uptime Kuma instance on different hardware, since the current one lives on the Pi it can't alert about
-- Send Suricata alerts to Wazuh so network and host events land in one place, then an isolated attack-practice range to test what it catches
+- An isolated attack-practice range to test what Suricata and Wazuh actually catch
 - Real internal hostnames with proper certificates (a private subdomain that only my own DNS answers), which should also fix the single sign-on logins that fail today because the apps connect by IP address and the certificate doesn't match
 - A second physical firewall with CARP failover, so the network stays up while the main one reboots
 - Something for the domain controller that fits where Authentik doesn't
@@ -253,7 +264,6 @@ The stuff I got wrong, including the dumb ones. Leaving these out would make the
 - An internal certificate authority to replace self-signed certificates
 - Add the photo share to the nightly off-box copy, and then offsite backup to cover the one threat the current layers don't
 - Single sign-on for Immich through Authentik. I got as far as an OAuth provider and the Immich settings, but the Immich container fails its discovery request to Authentik even though the Docker host can reach it fine. I haven't found the cause yet, so it's parked until the internal certificate authority is in place, which removes one variable
-- GNS3 topologies for routing/switching practice
 - Building out the Rocky Linux practice VM for RHCSA prep. It's isolated on purpose, so I can break things there without taking down anything the lab depends on
 
 ---
