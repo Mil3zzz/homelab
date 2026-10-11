@@ -4,6 +4,11 @@ What changed in the lab, newest first. Dates are when the work was done where I 
 
 ---
 
+## 2026-10-10 (evening)
+- Recovered the DNS/SIEM box after it booted without its USB backup drive and dropped into emergency mode. Added `nofail` to the drive's mount line so a missing drive can't block boot again ([write-up](docs/04-missing-mount-emergency-mode.md)).
+- Cable cleanup in the rack: power and network separated, zip-tied loosely through the floor slots, nothing re-patched to a different switch port. Wrote a shutdown runbook of what can be unplugged and what needs a clean shutdown first.
+- Added DHCP reservations in OPNsense for the services that matter (Pi, NAS, desktop, Open WebUI, Termix, monitoring, Immich host) so their addresses can't shift.
+
 ## 2026-10-10
 - Added the four troubleshooting write-ups the README already linked to (`docs/`). They had never been uploaded, so those links were broken.
 - Added this changelog and a "last updated" date to the README.

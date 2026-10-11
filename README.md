@@ -210,6 +210,7 @@ These are the parts of this project I'd actually want to talk through in an inte
 1. **[DNS queries dropped with no log entry anywhere](docs/01-dns-silent-drop.md)** — every network layer checked out clean, firewall logs completely empty, and the actual cause was one application setting.
 2. **[Domain join working, login failing on a correct password](docs/02-kerberos-clock-skew.md)** — authentication broken by clock drift, in a way that looked nothing like a time problem.
 3. **[WireGuard handshaking fine, traffic going nowhere](docs/03-wireguard-to-tailscale.md)** — double NAT, a wrong endpoint, and eventually switching tools instead of grinding further.
+4. **[Server answers ping but nothing else works](docs/04-missing-mount-emergency-mode.md)** — a missing optional drive put the whole box into emergency mode, and a one-word fstab option fixed it for good.
 
 ### Smaller ones
 
